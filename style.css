@@ -1,0 +1,210 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+  background: #f2f2f7;
+  color: #1c1c1e;
+  min-height: 100vh;
+}
+
+/* Screens */
+.screen {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 20px 40px;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* Typography */
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  color: #1c1c1e;
+  margin-top: 12px;
+}
+
+h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1c1c1e;
+  margin-top: 4px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #8e8e93;
+  font-size: 14px;
+  margin-top: -8px;
+}
+
+/* Upload zones */
+.upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px dashed #c7c7cc;
+  border-radius: 14px;
+  padding: 32px 16px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: 110px;
+}
+
+.upload-zone.selected {
+  border-color: #007aff;
+  background: #f0f7ff;
+}
+
+.upload-icon {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.upload-label {
+  font-size: 15px;
+  color: #636366;
+  text-align: center;
+  word-break: break-all;
+}
+
+.upload-zone.selected .upload-label {
+  color: #007aff;
+}
+
+/* Progress */
+#progress-area {
+  text-align: center;
+}
+
+#progress-text {
+  font-size: 13px;
+  color: #636366;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  background: #e5e5ea;
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+}
+
+#progress-fill {
+  height: 100%;
+  background: #007aff;
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.25s ease;
+}
+
+/* Field groups */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.field-group label {
+  font-size: 12px;
+  color: #8e8e93;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+.field-group label:first-child {
+  margin-top: 0;
+}
+
+.field-group input {
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 16px;
+  color: #1c1c1e;
+  background: #f9f9f9;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.field-group input:focus {
+  border-color: #007aff;
+  background: #fff;
+}
+
+/* Result */
+.result-box {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  flex: 1;
+}
+
+#result-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  font-size: 15px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  color: #1c1c1e;
+}
+
+/* Buttons */
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  background: #007aff;
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  min-height: 54px;
+  margin-top: 4px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-primary:active:not(:disabled) {
+  opacity: 0.75;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  color: #007aff;
+  border: 2px solid #007aff;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-height: 52px;
+}
+
+.btn-secondary:active {
+  background: #e8f0fe;
+}
