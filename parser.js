@@ -1,16 +1,19 @@
 // parser.js
 
 // 从 OCR 文本提取城市对
-// "广州→徐州" 或 "广州 一 徐州"（OCR 常把 → 识别为汉字"一"）
+// 支持三种格式：
+//   "广州→徐州"  "广州 一 徐州"  "广州徐州"（OCR 省略分隔符）
+// [^\S\n]* 仅允许空格，不跨行，防止把相邻两行的汉字误拼成城市对
 function parseRoute(text) {
-  const match = text.match(/([\u4e00-\u9fff]{2,4})\s*[→一]\s*([\u4e00-\u9fff]{2,4})/);
+  const match = text.match(/([\u4e00-\u9fff]{2,3})[^\S\n]*[→一]?[^\S\n]*([\u4e00-\u9fff]{2,3})/);
   if (!match) return null;
   return { from: match[1], to: match[2] };
 }
 
-// 提取日期，"04-28" → "4.28"
+// 提取日期，"04-28" / "04一28" → "4.28"
+// OCR 常把日期里的"-"识别为汉字"一"
 function parseDate(text) {
-  const match = text.match(/(\d{1,2})[-./](\d{1,2})/);
+  const match = text.match(/(\d{1,2})[-./一](\d{1,2})/);
   if (!match) return '';
   return `${parseInt(match[1])}.${parseInt(match[2])}`;
 }
@@ -28,14 +31,19 @@ function parseTimeRange(text) {
 }
 
 // 提取机场信息
-// OCR 对小字航站楼（如"白云T1-奔牛"）识别率极低，采用分级策略：
-// 1. 找到 2 个 T+数字 → 完整机场名
-// 2. 找到 1 个 T+数字 → 出发机场有航站楼，到达机场只填城市
-// 3. 找不到 → 只填城市名，用户手动补充
+// OCR 输出的航线行格式为 "白云T1一奔牛" 或 "奔牛一白云T2"
+// 策略：优先匹配整行 "机场A(T\d)?一机场B(T\d)?" 同时拿到两端信息
+// 降级：只找到 T+数字 → 仅对应端填完整，另一端填城市
+// 兜底：都没有 → 填城市名
 function parseAirports(text, fromCity, toCity) {
-  const hits = [...text.matchAll(/([\u4e00-\u9fff]{2,3})\s*(T\d)/g)].map(m => ({
-    name: m[1],
-    term: m[2],
+  const m = text.match(/([\u4e00-\u9fff]{2,3})(T\d)?(?:一|-)([\u4e00-\u9fff]{2,3})(T\d)?/);
+  if (m && (m[2] || m[4])) {
+    const from = fromCity + m[1] + (m[2] ? ' ' + m[2] : '');
+    const to   = toCity   + m[3] + (m[4] ? ' ' + m[4] : '');
+    return { from, to };
+  }
+  const hits = [...text.matchAll(/([\u4e00-\u9fff]{2,3})\s*(T\d)/g)].map(h => ({
+    name: h[1], term: h[2],
   }));
   const from = hits[0] ? `${fromCity}${hits[0].name} ${hits[0].term}` : fromCity;
   const to   = hits[1] ? `${toCity}${hits[1].name} ${hits[1].term}` : toCity;
