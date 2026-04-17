@@ -85,6 +85,8 @@ document.getElementById('btn-ocr').addEventListener('click', async function () {
     document.getElementById('ret-flight').value = retInfo.flight;
 
     setProgress(100, '识别完成！');
+    // 临时调试：显示原始OCR文字
+    window._ocrDebug = '=== 去程 ===\n' + outText + '\n\n=== 回程 ===\n' + retText;
     setTimeout(function () { showScreen('screen-confirm'); }, 400);
 
   } catch (err) {
