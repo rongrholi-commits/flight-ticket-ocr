@@ -1,5 +1,4 @@
 // app.js
-import { createOCREngine } from 'https://unpkg.com/client-side-ocr@latest/dist/index.mjs';
 
 // ── 屏幕切换 ─────────────────────────────────────────────
 function showScreen(id) {
@@ -49,6 +48,7 @@ document.getElementById('btn-ocr').addEventListener('click', async function () {
 
   try {
     setProgress(10, '加载模型（首次约需 15 秒）...');
+    const { createOCREngine } = await import('https://unpkg.com/client-side-ocr@latest/dist/index.mjs');
     const ocr = createOCREngine({ language: 'zh' });
     await ocr.initialize();
 
