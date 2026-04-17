@@ -1,4 +1,5 @@
 // app.js
+import { createOCREngine } from 'https://unpkg.com/client-side-ocr@latest/dist/index.mjs';
 
 // ── 屏幕切换 ─────────────────────────────────────────────
 function showScreen(id) {
@@ -44,31 +45,22 @@ document.getElementById('btn-ocr').addEventListener('click', async function () {
   this.disabled = true;
   const progressArea = document.getElementById('progress-area');
   progressArea.hidden = false;
-  setProgress(0, '加载语言包（首次约需 30 秒）...');
+  setProgress(0, '准备中...');
 
   try {
-    let phase = 0; // 0 = outbound, 1 = return
+    setProgress(10, '加载模型（首次约需 15 秒）...');
+    const ocr = createOCREngine({ language: 'zh' });
+    await ocr.initialize();
 
-    const worker = await Tesseract.createWorker('chi_sim', 1, {
-      logger: function (m) {
-        if (m.status === 'recognizing text') {
-          const base = phase === 0 ? 15 : 55;
-          setProgress(base + m.progress * 35, `识别第 ${phase + 1} 张图片 ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
+    setProgress(40, '识别去程截图...');
+    const outResult = await ocr.processImage(outboundFile);
+    const outText = outResult.text || outResult;
 
-    setProgress(10, '识别去程截图...');
-    phase = 0;
-    const { data: { text: outText } } = await worker.recognize(outboundFile);
+    setProgress(70, '识别回程截图...');
+    const retResult = await ocr.processImage(returnFile);
+    const retText = retResult.text || retResult;
 
-    setProgress(50, '识别回程截图...');
-    phase = 1;
-    const { data: { text: retText } } = await worker.recognize(returnFile);
-
-    setProgress(95, '解析中...');
-    await worker.terminate();
-
+    setProgress(90, '解析中...');
     const outInfo = parseFlightInfo(outText);
     const retInfo = parseFlightInfo(retText);
 
@@ -85,8 +77,6 @@ document.getElementById('btn-ocr').addEventListener('click', async function () {
     document.getElementById('ret-flight').value = retInfo.flight;
 
     setProgress(100, '识别完成！');
-    // 临时调试：显示原始OCR文字
-    window._ocrDebug = '=== 去程 ===\n' + outText + '\n\n=== 回程 ===\n' + retText;
     setTimeout(function () { showScreen('screen-confirm'); }, 400);
 
   } catch (err) {
