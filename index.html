@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>机票识别</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ① 上传页 -->
+  <div id="screen-upload" class="screen active">
+    <h1>机票识别</h1>
+    <p class="subtitle">上传往返机票截图，自动生成预订文字</p>
+
+    <label class="upload-zone" id="zone-outbound" for="input-outbound">
+      <span class="upload-icon">✈</span>
+      <span class="upload-label" id="label-outbound">点击选择去程截图</span>
+      <input type="file" accept="image/*" id="input-outbound" hidden>
+    </label>
+
+    <label class="upload-zone" id="zone-return" for="input-return">
+      <span class="upload-icon">✈</span>
+      <span class="upload-label" id="label-return">点击选择回程截图</span>
+      <input type="file" accept="image/*" id="input-return" hidden>
+    </label>
+
+    <div id="progress-area" hidden>
+      <p id="progress-text">正在识别...</p>
+      <div class="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+
+    <button id="btn-ocr" class="btn-primary" disabled>开始识别</button>
+  </div>
+
+  <!-- ② 确认页 -->
+  <div id="screen-confirm" class="screen">
+    <h2>确认去程</h2>
+    <div class="field-group">
+      <label for="out-date">日期</label>
+      <input type="text" id="out-date" placeholder="如 4.28">
+      <label for="out-from">出发机场</label>
+      <input type="text" id="out-from" placeholder="如 广州白云 T2">
+      <label for="out-to">到达机场</label>
+      <input type="text" id="out-to" placeholder="如 徐州观音 T2">
+      <label for="out-time">时间</label>
+      <input type="text" id="out-time" placeholder="如 15：05-17：25">
+      <label for="out-flight">航班号</label>
+      <input type="text" id="out-flight" placeholder="如 南航CZ3339">
+    </div>
+
+    <h2>确认回程</h2>
+    <div class="field-group">
+      <label for="ret-date">日期</label>
+      <input type="text" id="ret-date" placeholder="如 4.30">
+      <label for="ret-from">出发机场</label>
+      <input type="text" id="ret-from" placeholder="如 徐州观音 T2">
+      <label for="ret-to">到达机场</label>
+      <input type="text" id="ret-to" placeholder="如 广州白云 T2">
+      <label for="ret-time">时间</label>
+      <input type="text" id="ret-time" placeholder="如 16：15-19：00">
+      <label for="ret-flight">航班号</label>
+      <input type="text" id="ret-flight" placeholder="如 长龙GJ8060">
+    </div>
+
+    <button id="btn-generate" class="btn-primary">生成预订文字</button>
+  </div>
+
+  <!-- ③ 结果页 -->
+  <div id="screen-result" class="screen">
+    <h2>预订文字</h2>
+    <div class="result-box">
+      <pre id="result-text"></pre>
+    </div>
+    <button id="btn-copy" class="btn-primary">复制</button>
+    <button id="btn-restart" class="btn-secondary">重新开始</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
