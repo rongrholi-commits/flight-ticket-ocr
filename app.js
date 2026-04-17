@@ -18,7 +18,7 @@ function checkBothSelected() {
 document.getElementById('input-outbound').addEventListener('change', function () {
   outboundFile = this.files[0];
   if (outboundFile) {
-    document.getElementById('label-outbound').textContent = this.files[0].name;
+    document.getElementById('label-outbound').textContent = outboundFile.name;
     document.getElementById('zone-outbound').classList.add('selected');
   }
   checkBothSelected();
@@ -27,7 +27,7 @@ document.getElementById('input-outbound').addEventListener('change', function ()
 document.getElementById('input-return').addEventListener('change', function () {
   returnFile = this.files[0];
   if (returnFile) {
-    document.getElementById('label-return').textContent = this.files[0].name;
+    document.getElementById('label-return').textContent = returnFile.name;
     document.getElementById('zone-return').classList.add('selected');
   }
   checkBothSelected();
@@ -53,7 +53,7 @@ document.getElementById('btn-ocr').addEventListener('click', async function () {
       logger: function (m) {
         if (m.status === 'recognizing text') {
           const base = phase === 0 ? 15 : 55;
-          setProgress(base + m.progress * 35, '识别第 ' + (phase + 1) + ' 张图片 ' + Math.round(m.progress * 100) + '%');
+          setProgress(base + m.progress * 35, `识别第 ${phase + 1} 张图片 ${Math.round(m.progress * 100)}%`);
         }
       },
     });
@@ -111,6 +111,12 @@ document.getElementById('btn-generate').addEventListener('click', function () {
     flight: document.getElementById('ret-flight').value.trim(),
   };
 
+  if (!o.date || !o.from || !o.to || !o.time || !o.flight ||
+      !r.date || !r.from || !r.to || !r.time || !r.flight) {
+    alert('请检查所有字段是否已填写');
+    return;
+  }
+
   var text = 'Dear Candy,\n请帮忙预定以下往返机票，谢谢~\n\n' +
     o.date + '\n' + o.from + '-' + o.to + '\n' + o.time + '\n' + o.flight +
     '\n\n' +
@@ -127,7 +133,8 @@ document.getElementById('btn-copy').addEventListener('click', async function () 
 
   try {
     await navigator.clipboard.writeText(text);
-  } catch (_) {
+  } catch (clipboardErr) {
+    console.warn('Clipboard API unavailable, using fallback:', clipboardErr);
     var ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
