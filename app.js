@@ -39,6 +39,42 @@ function setProgress(pct, msg) {
   document.getElementById('progress-text').textContent = msg;
 }
 
+// ── OCR 工具函数 ─────────────────────────────────────────
+function compressImage(file) {
+  return new Promise(function (resolve) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var maxSide = 1600;
+      var scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      var canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(resolve, 'image/jpeg', 0.88);
+    };
+    img.src = url;
+  });
+}
+
+async function recognizeText(file) {
+  var blob = await compressImage(file);
+  var fd = new FormData();
+  fd.append('file', blob, 'ticket.jpg');
+  fd.append('apikey', 'helloworld');
+  fd.append('language', 'chs');
+  fd.append('OCREngine', '1');
+  fd.append('scale', 'true');
+
+  var res = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
+  var data = await res.json();
+  if (data.IsErroredOnProcessing) {
+    throw new Error((data.ErrorMessage || ['OCR 服务出错'])[0]);
+  }
+  return (data.ParsedResults[0] || {}).ParsedText || '';
+}
+
 // ── OCR ─────────────────────────────────────────────────
 document.getElementById('btn-ocr').addEventListener('click', async function () {
   this.disabled = true;
@@ -47,18 +83,11 @@ document.getElementById('btn-ocr').addEventListener('click', async function () {
   setProgress(0, '准备中...');
 
   try {
-    setProgress(10, '加载模型（首次约需 15 秒）...');
-    const { createOCREngine } = await import('https://unpkg.com/client-side-ocr@latest/dist/index.mjs');
-    const ocr = createOCREngine({ language: 'zh' });
-    await ocr.initialize();
+    setProgress(20, '识别去程截图...');
+    var outText = await recognizeText(outboundFile);
 
-    setProgress(40, '识别去程截图...');
-    const outResult = await ocr.processImage(outboundFile);
-    const outText = outResult.text || outResult;
-
-    setProgress(70, '识别回程截图...');
-    const retResult = await ocr.processImage(returnFile);
-    const retText = retResult.text || retResult;
+    setProgress(60, '识别回程截图...');
+    var retText = await recognizeText(returnFile);
 
     setProgress(90, '解析中...');
     const outInfo = parseFlightInfo(outText);
