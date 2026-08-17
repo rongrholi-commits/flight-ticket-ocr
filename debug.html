@@ -3,227 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>诊断 - 机票识别</title>
+  <title>JS 诊断</title>
   <style>
     body { font-family: -apple-system, "PingFang SC", sans-serif; padding: 16px; background: #f2f2f7; color: #1c1c1e; }
-    h1 { font-size: 20px; margin-bottom: 4px; }
-    .step { background: #fff; border-radius: 12px; padding: 14px; margin: 12px 0; }
-    .step b { font-size: 15px; }
-    .hint { font-size: 13px; color: #636366; margin: 6px 0; }
-    #jsflag { padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #ffd7d7; color: #b00000; }
-    #jsflag.ok { background: #d7ffd9; color: #0a7a20; }
-    label.zone { display: block; border: 2px dashed #c7c7cc; border-radius: 10px; padding: 22px; text-align: center; font-size: 15px; color: #007aff; margin-top: 8px; }
-    /* 方式 C：修复方案，input 透明铺满整个区域 */
-    label.zone.fixed { position: relative; overflow: hidden; }
-    label.zone.fixed input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; }
+    h1 { font-size: 20px; }
+    .box { border-radius: 12px; padding: 16px; margin: 10px 0; font-size: 15px; font-weight: 700; line-height: 1.6; }
+    .bad  { background: #ffd7d7; color: #b00000; }
+    .good { background: #d7ffd9; color: #0a7a20; }
+    /* 这两块默认隐藏，只有对应的脚本真的跑了才显示出来 */
+    #headmark, #extmark { display: none; }
+    html[data-js="on"]  #headmark { display: block; }
+    html[data-ext="on"] #extmark  { display: block; }
     button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #007aff; color: #fff; font-size: 16px; font-weight: 600; margin-top: 8px; }
-    button.sec { background: #e5e5ea; color: #1c1c1e; }
-    #log { background: #1c1c1e; color: #7bed7b; font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.5; padding: 12px; border-radius: 10px; white-space: pre-wrap; word-break: break-all; min-height: 240px; }
+    pre { background: #1c1c1e; color: #7bed7b; font-size: 12px; padding: 12px; border-radius: 10px; white-space: pre-wrap; word-break: break-all; min-height: 70px; }
   </style>
+  <script>document.documentElement.setAttribute('data-js', 'on');</script>
 </head>
 <body>
 
-<h1>手机端诊断 v2</h1>
+<h1>JavaScript 可用性诊断</h1>
+<p style="font-size:13px;color:#636366">看下面 5 条各是什么颜色 / 有没有出现，然后整页截图发回来。</p>
 
-<div id="jsflag">JS 未运行 —— 如果这条红字一直在，说明脚本根本没执行，那就是根因</div>
+<noscript>
+  <div class="box bad">
+    ① noscript 显示了 —— 说明 Safari 的 JavaScript 是关闭的<br><br>
+    修复：iPhone「设置」→ 往下找到「Safari 浏览器」→「高级」→ 打开「JavaScript」<br>
+    然后回到本页下拉刷新
+  </div>
+</noscript>
 
-<p class="hint">按顺序做 ①②③④，然后把最下面黑框里的全部文字截图发回来。</p>
-
-<div class="step">
-  <b>① 方式 A：hidden + label（线上旧版做法）</b>
-  <label class="zone" for="fileA">点这里选图
-    <input type="file" accept="image/*" id="fileA" hidden>
-  </label>
+<div class="box bad" id="bodymark">
+  ② 这条现在是红的。脚本正常时它会变成绿色。
 </div>
 
-<div class="step">
-  <b>② 方式 B：原生可见 input（对照组）</b>
-  <p class="hint"><input type="file" accept="image/*" id="fileB"></p>
-</div>
+<div class="box good" id="headmark">③ head 里的内联脚本执行了 ✓</div>
 
-<div class="step">
-  <b>③ 方式 C：修复方案（透明 input 铺满）</b>
-  <p class="hint">这个如果能打开相册，说明修复有效</p>
-  <label class="zone fixed">点这里选图
-    <input type="file" accept="image/*" id="fileC">
-  </label>
-</div>
+<div class="box good" id="extmark">④ 外部文件 probe.js 加载并执行了 ✓</div>
 
-<div class="step">
-  <b>④ 跑完整识别流程</b>
-  <p class="hint">上面任意一种方式选好图后点这里</p>
-  <button id="run">开始逐步诊断</button>
-  <button id="clearBtn" class="sec">清空日志</button>
-</div>
+<button onclick="document.getElementById('out').textContent = '⑤ 内联 onclick 可用 ✓';">
+  点我：测试内联 onclick
+</button>
 
-<pre id="log"></pre>
+<pre id="out">（点上面按钮前，这里应显示 UA）</pre>
 
+<script src="probe.js"></script>
 <script>
-/* 纯 ES5：不用 async/await、箭头函数、let/const、模板字符串、matchAll、展开运算符。
-   任何一个旧 iOS 不认识的语法都会让整个脚本在解析阶段就死掉，那样连监听器都挂不上。 */
 (function () {
-  var logEl = document.getElementById('log');
-  var buf = '';
-
-  // 第一件事：证明脚本确实跑起来了
-  var flag = document.getElementById('jsflag');
-  flag.className = 'ok';
-  flag.textContent = 'JS 已运行 ✓';
-
-  function log(msg) {
-    var d = new Date();
-    var t = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
-    buf += '[' + t + '] ' + msg + '\n';
-    logEl.textContent = buf;
-    window.scrollTo(0, document.body.scrollHeight);
-  }
-
-  window.onerror = function (msg, src, line, col) {
-    log('!! JS 报错: ' + msg + ' @ ' + src + ':' + line + ':' + col);
-  };
-
-  log('=== PAGE LOAD ===');
-  log('UA: ' + navigator.userAgent);
-
-  // sessionStorage 单独放 try：无痕模式下 setItem 会抛异常
-  try {
-    sessionStorage.setItem('probe', '1');
-    sessionStorage.removeItem('probe');
-    log('sessionStorage: 可用');
-  } catch (e) {
-    log('sessionStorage: 不可用 (' + e.name + ') <<< 无痕模式');
-  }
-
-  function has(x) { return x ? 'Y' : 'N'; }
-  log('能力: createObjectURL=' + has(window.URL && URL.createObjectURL) +
-      ' toBlob=' + has(document.createElement('canvas').toBlob) +
-      ' FileReader=' + has(window.FileReader) +
-      ' FormData=' + has(window.FormData) +
-      ' fetch=' + has(window.fetch) +
-      ' Promise=' + has(window.Promise) +
-      ' XHR2=' + has(window.XMLHttpRequest && 'upload' in new XMLHttpRequest()));
-
-  var picked = null;
-
-  function bind(id, name) {
-    var el = document.getElementById(id);
-    if (!el) { log('!! 找不到元素 ' + id); return; }
-    el.onchange = function () {
-      log('--- ' + name + ' change 触发, files=' + this.files.length + ' ---');
-      var f = this.files[0];
-      if (!f) { log('!! ' + name + ' 没拿到文件'); return; }
-      picked = f;
-      log(name + ' 文件名=' + f.name + ' 大小=' + Math.round(f.size / 1024) + 'KB 类型=' + (f.type || '(空)'));
-    };
-  }
-  bind('fileA', '方式A');
-  bind('fileB', '方式B');
-  bind('fileC', '方式C');
-
-  document.getElementById('clearBtn').onclick = function () {
-    buf = ''; logEl.textContent = '';
-  };
-
-  document.getElementById('run').onclick = function () {
-    var btn = this;
-    btn.disabled = true;
-    log('=== 开始诊断 ===');
-
-    if (!picked) { log('!! 还没选图'); btn.disabled = false; return; }
-
-    var done = false;
-    function fail(m) { if (done) { return; } done = true; log('!!!! 失败于: ' + m); btn.disabled = false; }
-    function finish(m) { if (done) { return; } done = true; log(m); btn.disabled = false; }
-
-    log('[1/5] 解码图片...');
-    var img = new Image();
-    var url = null;
-    var t1 = setTimeout(function () { fail('图片解码超时 15s'); }, 15000);
-
-    img.onerror = function () { clearTimeout(t1); fail('img.onerror —— Safari 无法解码这张图'); };
-    img.onload = function () {
-      clearTimeout(t1);
-      if (done) { return; }
-      log('[1/5] OK 尺寸=' + img.naturalWidth + 'x' + img.naturalHeight);
-
-      try {
-        log('[2/5] 画到 canvas...');
-        var maxSide = 1600;
-        var scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-        var canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.naturalWidth * scale);
-        canvas.height = Math.round(img.naturalHeight * scale);
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        log('[2/5] OK canvas=' + canvas.width + 'x' + canvas.height);
-
-        log('[3/5] 检查画面是否空白...');
-        var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        var sum = 0, n = 0, same = true, first = data[0];
-        for (var i = 0; i < data.length; i += 4000) {
-          sum += data[i]; n++;
-          if (data[i] !== first) { same = false; }
-        }
-        log('[3/5] 平均亮度=' + Math.round(sum / n) + ' 全部同色=' + same + (same ? '  <<< 空白画布！' : ''));
-        if (url) { URL.revokeObjectURL(url); }
-
-        log('[4/5] 压成 JPEG...');
-        var t4 = setTimeout(function () { fail('toBlob 超时 15s'); }, 15000);
-        canvas.toBlob(function (blob) {
-          clearTimeout(t4);
-          if (done) { return; }
-          if (!blob) { fail('toBlob 返回 null（canvas 太大或内存不足）'); return; }
-          log('[4/5] OK 大小=' + Math.round(blob.size / 1024) + 'KB' +
-              (blob.size > 1048576 ? '  <<< 超过免费额度 1MB！' : ''));
-          upload(blob);
-        }, 'image/jpeg', 0.88);
-      } catch (e) {
-        fail('canvas 阶段异常: ' + e.name + ' ' + e.message);
-      }
-    };
-
-    function upload(blob) {
-      log('[5/5] 上传到 api.ocr.space ...');
-      var fd = new FormData();
-      fd.append('file', blob, 'ticket.jpg');
-      fd.append('apikey', 'helloworld');
-      fd.append('language', 'chs');
-      fd.append('OCREngine', '1');
-      fd.append('scale', 'true');
-
-      var t0 = new Date().getTime();
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', 'https://api.ocr.space/parse/image', true);
-      xhr.timeout = 60000;
-      xhr.ontimeout = function () { fail('网络超时 60s —— 手机连不通 api.ocr.space'); };
-      xhr.onerror = function () { fail('网络错误 —— 请求根本没发出去或被拦截'); };
-      xhr.onload = function () {
-        log('[5/5] HTTP ' + xhr.status + '，耗时 ' + (new Date().getTime() - t0) + 'ms');
-        log('响应前 500 字: ' + String(xhr.responseText).slice(0, 500));
-        finish('=== 诊断结束，全部通过 ===');
-      };
-      xhr.send(fd);
-    }
-
-    try {
-      if (window.URL && URL.createObjectURL) {
-        url = URL.createObjectURL(picked);
-        log('已创建 objectURL');
-        img.src = url;
-      } else {
-        log('无 createObjectURL，改用 FileReader');
-        var fr = new FileReader();
-        fr.onload = function () { img.src = fr.result; };
-        fr.onerror = function () { clearTimeout(t1); fail('FileReader 读取失败'); };
-        fr.readAsDataURL(picked);
-      }
-    } catch (e) {
-      clearTimeout(t1);
-      fail('读取文件异常: ' + e.name + ' ' + e.message);
-    }
-  };
-
-  log('监听器已全部挂载，可以开始操作');
+  var el = document.getElementById('bodymark');
+  el.className = 'box good';
+  el.textContent = '② body 里的内联脚本执行了 ✓';
+  document.getElementById('out').textContent = 'UA: ' + navigator.userAgent;
 })();
 </script>
 
