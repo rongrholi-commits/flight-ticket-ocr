@@ -64,6 +64,21 @@ h2 {
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
   min-height: 110px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* iOS Safari 不会为 display:none 的 file input 打开相册（hidden 属性即 display:none），
+   所以让 input 保持可渲染、透明地铺满整个区域，用户点的就是 input 本身，
+   不依赖 label 转发点击 */
+.file-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .upload-zone.selected {
