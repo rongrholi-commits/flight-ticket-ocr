@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>诊断 - 机票识别</title>
+  <style>
+    body { font-family: -apple-system, 'PingFang SC', sans-serif; padding: 16px; background: #f2f2f7; color: #1c1c1e; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .step { background: #fff; border-radius: 12px; padding: 14px; margin: 12px 0; }
+    .step b { font-size: 15px; }
+    .hint { font-size: 13px; color: #636366; margin: 6px 0; }
+    label.zone { display: block; border: 2px dashed #c7c7cc; border-radius: 10px; padding: 20px; text-align: center; font-size: 15px; color: #007aff; margin-top: 8px; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #007aff; color: #fff; font-size: 16px; font-weight: 600; margin-top: 8px; }
+    button.sec { background: #e5e5ea; color: #1c1c1e; }
+    #log { background: #1c1c1e; color: #7bed7b; font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.5; padding: 12px; border-radius: 10px; white-space: pre-wrap; word-break: break-all; min-height: 200px; }
+  </style>
+</head>
+<body>
+
+<h1>手机端诊断</h1>
+<p class="hint">按顺序做 ①②③，然后把最下面黑框里的全部文字截图发回来。</p>
+
+<div class="step">
+  <b>① 方式 A 选图（当前线上版本的做法）</b>
+  <p class="hint">隐藏的 input + label，iOS 上有已知兼容问题</p>
+  <label class="zone" for="fileA">点这里选去程截图
+    <input type="file" accept="image/*" id="fileA" hidden>
+  </label>
+</div>
+
+<div class="step">
+  <b>② 方式 B 选图（原生可见按钮）</b>
+  <p class="hint">如果 A 点不开而 B 能用，问题就是 hidden input</p>
+  <input type="file" accept="image/*" id="fileB">
+</div>
+
+<div class="step">
+  <b>③ 跑完整识别流程</b>
+  <p class="hint">用上面任意一种方式选好图后点这里，每一步都会打日志，卡住会超时报错</p>
+  <button id="run">开始逐步诊断</button>
+  <button id="clearBtn" class="sec">清空日志</button>
+</div>
+
+<pre id="log"></pre>
+
+<script>
+(function () {
+  var logEl = document.getElementById('log');
+  var KEY = 'ocr_debug_log';
+
+  function render() {
+    logEl.textContent = sessionStorage.getItem(KEY) || '';
+    logEl.scrollTop = logEl.scrollHeight;
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  function log(msg) {
+    var t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    var prev = sessionStorage.getItem(KEY) || '';
+    sessionStorage.setItem(KEY, prev + '[' + t + '] ' + msg + '\n');
+    render();
+  }
+
+  // 日志存在 sessionStorage：如果 Safari 在选图时把页面回收重载了，
+  // 日志会保留，并且会出现第二条 PAGE LOAD —— 那本身就是根因证据
+  log('=== PAGE LOAD ===');
+  log('UA: ' + navigator.userAgent);
+  log('能力检测: toBlob=' + (typeof HTMLCanvasElement.prototype.toBlob === 'function') +
+      ' createObjectURL=' + (typeof URL.createObjectURL === 'function') +
+      ' fetch=' + (typeof fetch === 'function') +
+      ' FormData=' + (typeof FormData === 'function'));
+
+  window.addEventListener('error', function (e) {
+    log('!! window error: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    log('!! 未捕获的 Promise 拒绝: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  window.addEventListener('pageshow', function (e) {
+    log('pageshow (从缓存恢复=' + e.persisted + ')');
+  });
+
+  var picked = null;
+
+  function onPick(which) {
+    return function () {
+      log('--- ' + which + ' change 事件触发 ---');
+      log(which + ' files.length = ' + this.files.length);
+      var f = this.files[0];
+      if (!f) { log('!! ' + which + ' 没拿到文件'); return; }
+      picked = f;
+      log(which + ' 文件名=' + f.name + ' 大小=' + Math.round(f.size / 1024) + 'KB 类型=' + (f.type || '(空)'));
+    };
+  }
+
+  document.getElementById('fileA').addEventListener('change', onPick('方式A'));
+  document.getElementById('fileB').addEventListener('change', onPick('方式B'));
+
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    sessionStorage.removeItem(KEY);
+    render();
+  });
+
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error('超时 ' + ms + 'ms：' + label)); }, ms);
+      })
+    ]);
+  }
+
+  function decode(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      log('已创建 objectURL');
+      img.onload = function () { log('img.onload 触发'); resolve({ img: img, url: url }); };
+      img.onerror = function () { reject(new Error('img.onerror：浏览器无法解码这张图')); };
+      img.src = url;
+    });
+  }
+
+  function toBlob(canvas) {
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (b) {
+        if (!b) { reject(new Error('toBlob 返回 null（canvas 太大或内存不足）')); return; }
+        resolve(b);
+      }, 'image/jpeg', 0.88);
+    });
+  }
+
+  document.getElementById('run').addEventListener('click', async function () {
+    this.disabled = true;
+    try {
+      log('=== 开始诊断 ===');
+      if (!picked) { log('!! 还没选图，先做 ① 或 ②'); return; }
+
+      log('[1/5] 解码图片...');
+      var r = await withTimeout(decode(picked), 15000, '图片解码');
+      log('[1/5] OK 尺寸=' + r.img.naturalWidth + 'x' + r.img.naturalHeight);
+
+      log('[2/5] 画到 canvas...');
+      var maxSide = 1600;
+      var scale = Math.min(1, maxSide / Math.max(r.img.naturalWidth, r.img.naturalHeight));
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(r.img.naturalWidth * scale);
+      canvas.height = Math.round(r.img.naturalHeight * scale);
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(r.img, 0, 0, canvas.width, canvas.height);
+      log('[2/5] OK canvas=' + canvas.width + 'x' + canvas.height);
+
+      log('[3/5] 检查 canvas 是否画白了...');
+      var d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      var sum = 0, n = 0, allSame = true, first = d[0];
+      for (var i = 0; i < d.length; i += 4000) { sum += d[i]; n++; if (d[i] !== first) allSame = false; }
+      log('[3/5] 平均亮度=' + Math.round(sum / n) + ' 全部同色=' + allSame + (allSame ? '  <<< 空白画布！' : ''));
+      URL.revokeObjectURL(r.url);
+
+      log('[4/5] 压成 JPEG...');
+      var blob = await withTimeout(toBlob(canvas), 15000, 'toBlob');
+      log('[4/5] OK 大小=' + Math.round(blob.size / 1024) + 'KB' + (blob.size > 1024 * 1024 ? '  <<< 超过免费额度 1MB！' : ''));
+
+      log('[5/5] 上传到 api.ocr.space ...');
+      var fd = new FormData();
+      fd.append('file', blob, 'ticket.jpg');
+      fd.append('apikey', 'helloworld');
+      fd.append('language', 'chs');
+      fd.append('OCREngine', '1');
+      fd.append('scale', 'true');
+      var t0 = Date.now();
+      var res = await withTimeout(
+        fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd }),
+        60000, '网络请求 api.ocr.space'
+      );
+      log('[5/5] HTTP ' + res.status + '，耗时 ' + (Date.now() - t0) + 'ms');
+      var txt = await res.text();
+      log('响应前 500 字: ' + txt.slice(0, 500));
+      log('=== 诊断结束，全部通过 ===');
+
+    } catch (err) {
+      log('!!!! 失败于: ' + err.message);
+    } finally {
+      this.disabled = false;
+    }
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
